@@ -343,18 +343,3 @@
   </aside>
 </div>
 {% endblock %}
-
-{% block scripts %}
-<script>
-  document.querySelectorAll('[data-toggle]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var el = document.getElementById(btn.getAttribute('data-toggle'));
-      if (el) el.hidden = !el.hidden;
-    });
-  });
-  if (location.hash && location.hash.indexOf('#act-') === 0) {
-    var el = document.querySelector(location.hash);
-    if (el) { el.classList.add('is-focused'); el.scrollIntoView({behavior: 'smooth', block: 'center'}); }
-  }
-</script>
-{% endblock %}

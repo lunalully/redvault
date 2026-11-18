@@ -177,6 +177,12 @@ def test_api_version_downgrade(lab):
 
 
 def test_logic_negative_cart(lab):
+    # The shop front must render on a cold session: the wallet is only seeded by
+    # ``init()``, and the index used to read ``session["balance"]`` before it ran
+    # (KeyError -> 500 for every new visitor).
+    r = lab["client"].get("/")
+    assert r.status_code == 200
+    assert "Wallet: $100.00" in r.text
     lab["client"].post("/add", data={"item": "kite", "qty": "-4"})
     lab["client"].post("/checkout")
     r = lab["client"].post("/add", data={"item": "vault", "qty": "1"})

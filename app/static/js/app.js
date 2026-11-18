@@ -370,6 +370,11 @@
     if (start) start.hidden = active;
     if (stop) stop.hidden = !active;
     if (reset) reset.hidden = !active;
+    // "Reset" restarts the lab in place. ``stop()`` hides these buttons as a
+    // side effect, so re-enable them here: after a reset the target is live
+    // again and the operator must be able to stop or reset it once more.
+    if (stop && active) stop.disabled = false;
+    if (reset && active) reset.disabled = false;
     const port = $("#lab-port");
     if (port) port.textContent = active ? `:${data.port}` : "—";
     const started = $("#lab-started");
@@ -495,6 +500,31 @@
     });
   });
 
+  /* --------------------------------- print ---------------------------------- */
+  // Certificado de trilha: `onclick` inline é bloqueado pela CSP.
+  $$(".js-print").forEach((button) => button.addEventListener("click", () => window.print()));
+
+  /* ------------------------------ toggles (trilhas) --------------------------- */
+  // Movido dos templates (learning_paths.html e learning_path_detail.html):
+  // script inline é bloqueado pela CSP, que só libera o hash do pre-paint da
+  // sidebar. Assim os botões "Nova trilha" e "Notas" voltam a funcionar.
+  $$("[data-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const el = document.getElementById(btn.getAttribute("data-toggle"));
+      if (!el) return;
+      el.hidden = !el.hidden;
+      if (btn.hasAttribute("aria-expanded")) btn.setAttribute("aria-expanded", String(!el.hidden));
+      if (!el.hidden) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  });
+  if (location.hash && location.hash.indexOf("#act-") === 0) {
+    const target = document.querySelector(location.hash);
+    if (target) {
+      target.classList.add("is-focused");
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
   /* ------------------------------- env refresh ------------------------------- */
   if (document.body.dataset.page === "environments") {
     setInterval(async () => {
@@ -503,7 +533,8 @@
         if (response.ok) {
           const data = await response.json();
           const counter = $("#active-env-count");
-          if (counter) counter.textContent = String(data.labs.length);
+          // The template renders "(n)"; keep the parentheses the JS otherwise drops.
+          if (counter) counter.textContent = `(${data.labs.length})`;
         }
       } catch (_) { /* ignore */ }
     }, 15000);

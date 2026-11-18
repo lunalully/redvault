@@ -26,6 +26,7 @@ def layout(title: str, body: str) -> object:
 
 @app.get("/")
 def index():
+    init()
     cards = "".join(
         f'''<div class="panel"><h2>{item["name"]}</h2><p>${item["price"]}.00</p>
         <form method="post" action="/add"><input type="hidden" name="item" value="{key}">

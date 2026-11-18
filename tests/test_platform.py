@@ -118,23 +118,37 @@ def test_local_operator_has_no_login(client):
         assert client.get(path, follow_redirects=False).headers["location"] == "/"
 
 
-def test_prepaint_sidebar_script_is_allowed_by_csp(client):
-    """The inline pre-paint script must be covered by the CSP hash.
+def test_inline_scripts_and_handlers_respect_csp(client):
+    """No template may ship an inline script or inline handler the CSP blocks.
 
-    A plain script-src 'self' silently blocks inline scripts, which broke the
-    persisted sidebar state. If the script changes, this test fails so the hash
-    is updated instead of quietly disabling the feature in real browsers.
+    The CSP allows inline scripts only through the hash of the pre-paint snippet
+    in base.html and never allows ``'unsafe-inline'``. Any other inline
+    ``<script>``, ``onclick=`` or ``onload=`` is silently dead in the browser:
+    that is how the learning-path "Nova trilha"/"Notas" toggles and the
+    certificate "Imprimir" button broke. Behaviour belongs in /static/js/app.js.
     """
     import base64
     import hashlib
     from pathlib import Path
 
-    response = client.get("/")
-    csp = response.headers["content-security-policy"]
+    templates_dir = Path(__file__).resolve().parents[1] / "app" / "templates"
+    csp = client.get("/").headers["content-security-policy"]
     script_src = next(part.strip() for part in csp.split(";") if part.strip().startswith("script-src"))
     assert "'unsafe-inline'" not in script_src
 
-    template = (Path(__file__).resolve().parents[1] / "app" / "templates" / "base.html").read_text()
+    problems: list[str] = []
+    for template_path in sorted(templates_dir.glob("*.html")):
+        html = template_path.read_text()
+        for match in re.finditer(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S):
+            digest = base64.b64encode(hashlib.sha256(match.group(1).encode()).digest()).decode()
+            if f"'sha256-{digest}'" not in script_src:
+                problems.append(f"{template_path.name}: inline <script> without a CSP hash")
+        for match in re.finditer(r"\son[a-z]+\s*=\s*\"[^\"]*\"", html):
+            problems.append(f"{template_path.name}: inline handler {match.group(0).strip()}")
+    assert not problems, "blocked by CSP: " + "; ".join(problems)
+
+    # The pre-paint script must stay: it applies the sidebar state before paint.
+    template = (templates_dir / "base.html").read_text()
     inline = re.search(r"<script>(.*?)</script>", template, re.S)
     assert inline, "base.html must keep the pre-paint script"
     digest = base64.b64encode(hashlib.sha256(inline.group(1).encode()).digest()).decode()

@@ -145,17 +145,3 @@
   {% endfor %}
 </div>
 {% endblock %}
-
-{% block scripts %}
-<script>
-  document.querySelectorAll('[data-toggle]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var el = document.getElementById(btn.getAttribute('data-toggle'));
-      if (!el) return;
-      el.hidden = !el.hidden;
-      btn.setAttribute('aria-expanded', String(!el.hidden));
-      if (!el.hidden) el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
-    });
-  });
-</script>
-{% endblock %}

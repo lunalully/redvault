@@ -2,6 +2,26 @@
 
 All notable changes to REDVAULT are documented here. The project follows a pragmatic version sequence; it is pre-1.0 and the content catalog is incomplete.
 
+## [1.8.2] — 2026-11-18
+
+Auditoria completa dos 97 labs e da plataforma: cada lab foi iniciado pelo
+`lab_manager` (sandbox do `bwrap` incluso), crawleado em GET e POST.
+
+### Fixed
+
+- **`logic-negative-cart` respondia `500` na página inicial.** A rota `/` lia `session["balance"]` antes de `init()` semear o valor, então todo visitante novo (sessão vazia) recebia `KeyError`. O teste de exploit não pegava porque começava direto no `POST /add`. O teste agora abre `/` primeiro.
+- **Scripts inline das trilhas bloqueados pela CSP.** `learning_paths.html` ("NOVA TRILHA") e `learning_path_detail.html` ("Notas") traziam `<script>` inline fora do hash da CSP, então nada acontecia ao clicar. A lógica foi movida para `static/js/app.js`.
+- **Botão "Imprimir / salvar PDF" do certificado não funcionava.** Usava `onclick="window.print()"`, que a CSP (sem `'unsafe-inline'`) bloqueia. Virou `.js-print` no `app.js`.
+- **Botão "Reset" do lab sumia depois de usado.** `stop()` escondia Parar/Reset e nada os reexibia, embora o lab voltasse ao ar. `setLabUI` agora reabilita os dois quando o lab está ativo.
+- **Contador "Labs em execução" perdia os parênteses após 15s.** O polling gravava `3` onde o template renderiza `(3)`. Agora mantém o formato.
+- **`scripts/start-lan.sh` falhava em instalação que segue o tutorial.** Rodava `python3 run.py` com o python do sistema (`No module named fastapi`), mesmo com as dependências no `.venv`. Agora usa `.venv/bin/python3` quando existe; o `--stop` reconhece qualquer `run.py`.
+
+### Tests
+
+- `test_platform.py::test_inline_scripts_and_handlers_respect_csp` passou a cobrir **todos** os templates (scripts inline e handlers `on*`), não só o pre-paint da sidebar.
+- Regressão de cold-start em `test_labs.py::test_logic_negative_cart`.
+- Suíte completa: **9/9 módulos**, e auditoria de 97/97 labs sem erro 5xx em GET e POST.
+
 ## [1.8.1] — 2026-11-18
 
 ### Fixed

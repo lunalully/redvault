@@ -15,7 +15,7 @@ LOG="${REDVAULT_LOG:-/tmp/redvault.log}"
 
 stop_all() {
   echo "==> Parando plataforma e labs…"
-  pkill -f "python3 run.py" 2>/dev/null || true
+  pkill -f "run\.py" 2>/dev/null || true
   pkill -f "/lab/app.py" 2>/dev/null || true
   sleep 1
   echo "==> Parado. Portas 42000–42999 liberadas."
@@ -43,11 +43,19 @@ if ss -ltn 2>/dev/null | grep -q "127.0.0.1:${PORT}\b"; then
 fi
 
 # --- 3. Sobe a plataforma ----------------------------------------------------
+# O tutorial instala as dependências no `.venv`; usar o mesmo interpretador
+# aqui evita "No module named fastapi" quando o script roda fora do venv.
+if [ -x ".venv/bin/python3" ]; then
+  PY=".venv/bin/python3"
+else
+  PY="python3"
+fi
+
 echo "==> IP detectado: ${IP}"
 echo "==> Subindo REDVAULT (painel em 127.0.0.1:${PORT}, labs em 0.0.0.0:42000-42999)…"
 REDVAULT_LAB_BIND=0.0.0.0 \
 REDVAULT_LAB_PUBLIC_HOST="$IP" \
-  nohup python3 run.py > "$LOG" 2>&1 &
+  nohup "$PY" run.py > "$LOG" 2>&1 &
 
 for _ in $(seq 1 30); do
   if curl -fsS "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1; then
