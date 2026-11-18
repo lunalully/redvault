@@ -2,6 +2,12 @@
 
 All notable changes to REDVAULT are documented here. The project follows a pragmatic version sequence; it is pre-1.0 and the content catalog is incomplete.
 
+## [1.8.4] — 2026-11-18
+
+### Fixed
+
+- **O certificado saía ilegível no PDF.** O `@media print` forçava `color: #111 !important` sem sobrescrever o `background` escuro do `.cert-frame`, então o texto ficava quase preto sobre fundo quase preto. A impressão agora usa folha branca de verdade e o PDF sai em **uma página A4** (antes eram duas, a segunda vazia).
+
 ## [1.8.3] — 2026-11-18
 
 ### Fixed

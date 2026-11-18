@@ -343,13 +343,51 @@
 .lp-cert-serial { font-family: var(--font-mono); font-size: var(--text-sm); letter-spacing: .04em; display: block; }
 
 /* ------------------------------ certificate ------------------------------ */
+/* O certificado é feito para ser salvo em PDF. A tela usa uma folha escura,
+   mas a impressão precisa sair em papel branco: sem sobrescrever o background
+   do .cert-frame o `color: #111 !important` deixava texto escuro sobre fundo
+   escuro (ilegível) e a página seguinte saía em branco. */
 @media print {
-  .sidebar, .sidebar-scrim, .topbar, footer, .detail-back, .btn-row, .flash-stack { display: none !important; }
-  .app-shell, .main, .content { display: block; padding: 0; margin: 0; }
+  @page { size: A4 portrait; margin: 16mm; }
+
+  .sidebar, .sidebar-scrim, .topbar, footer, .detail-back, .btn-row,
+  .flash-stack, .toast-stack, .skip-link { display: none !important; }
+  .app-shell, .main, .content { display: block; padding: 0; margin: 0; max-width: none; }
+  html, body { background: #fff !important; }
   html.is-collapsed .app-shell { display: block; }
   body::before, body::after { display: none; }
   body, .main, .content { background: #fff; color: #111; }
-  .cert-frame, .cert-sheet, .disclaimer { border-color: #ccc; }
-  .cert-frame * , .disclaimer * { color: #111 !important; }
+
+  /* Uma folha só: o certificado cabe inteiro na primeira página. */
+  .cert-sheet {
+    margin: 0 0 10mm;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #fff !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .cert-frame {
+    background: #fff !important;
+    border: 1px solid #bbb;
+    padding: 18mm 16mm;
+    border-radius: 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* O filete interno decorativo não faz sentido no papel. */
+  .cert-frame::after { display: none; }
+  .cert-frame *, .disclaimer * { color: #111 !important; }
   .cert-brand span { color: #b3122c !important; }
+  .cert-meta, .cert-foot { border-color: #ddd !important; }
+  .cert-text strong, .cert-name { color: #000 !important; }
+  .disclaimer {
+    background: #fff !important;
+    border: 1px solid #ccc;
+    color: #111;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  a { color: #111 !important; }
 }
