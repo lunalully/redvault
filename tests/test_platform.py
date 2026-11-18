@@ -289,6 +289,42 @@ def test_hint_progression_and_solution_gate(session):
         assert progress.solution_unlocked is True
 
 
+def test_locked_hint_still_ships_a_hint_body_for_live_reveal(session):
+    """Unlocking a hint must update the page without a reload.
+
+    ``app.js`` fills ``$(".hint-body", card)`` with the value returned by the
+    hint API. The template used to render ``.hint-body`` only when the hint was
+    already unlocked, so that lookup returned ``null`` for locked hints and the
+    text appeared only after a manual reload. Locks the regression from PR #2.
+    """
+    import re
+
+    from pathlib import Path
+
+    template = (Path(__file__).resolve().parents[1] / "app" / "templates" / "challenge_detail.html").read_text()
+    # The body must be unconditional; visibility comes from CSS and the
+    # ``hidden`` attribute, never from a Jinja ``{% if unlocked %}`` wrapper.
+    assert re.search(r'<div class="hint-body[^"]*">\{% if unlocked %\}', template), (
+        "hint body must always be rendered so app.js can fill it in place"
+    )
+    assert "{% if unlocked %}\n            <div class=\"hint-body" not in template
+
+    client = session["client"]
+    slug = "recon-backup-vault"
+    html = client.get(f"/challenges/{slug}").text
+
+    # Every hint card carries exactly one body element, plus one action block
+    # that is hidden once the hint is unlocked.
+    cards = re.findall(r'<div class="hint-card[^"]*">(.*?)(?=<div class="hint-card|</div>\s*</div>\s*</div>\s*</section>)', html, re.S)
+    assert cards, "expected hint cards on the detail page"
+    for card in cards:
+        assert card.count('class="hint-body') == 1
+        assert card.count('class="hint-actions') == 1
+    # A locked hint ships an empty body (no leak) and a visible action.
+    assert 'class="hint-body prose"></div>' in html
+    assert html.count('class="hint-actions" hidden') == 0
+
+
 def test_flag_validation_completion_xp_and_duplicate(session):
     client = session["client"]
     csrf = session["csrf"]

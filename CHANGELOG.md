@@ -2,6 +2,16 @@
 
 All notable changes to REDVAULT are documented here. The project follows a pragmatic version sequence; it is pre-1.0 and the content catalog is incomplete.
 
+## [1.8.3] — 2026-11-18
+
+### Fixed
+
+- **Texto do hint só aparecia depois de recarregar a página.** O template renderizava `.hint-body` apenas para hints já desbloqueados, então o JS (`$(".hint-body", card)`) recebia `null` e a dica não era injetada em tempo real. Os blocos agora são sempre renderizados e a visibilidade fica com CSS e o atributo `hidden` (PR #2, de @iamrafaelmelo).
+
+### Tests
+
+- `test_platform.py::test_locked_hint_still_ships_a_hint_body_for_live_reveal` trava a regressão: todo card de hint precisa ter exatamente um `.hint-body` e um `.hint-actions`, e o corpo de um hint bloqueado precisa estar vazio (sem vazamento).
+
 ## [1.8.2] — 2026-11-18
 
 Auditoria completa dos 97 labs e da plataforma: cada lab foi iniciado pelo
