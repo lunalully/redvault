@@ -88,15 +88,12 @@
               <span class="hint-title">{{ hint.title }}</span>
               <span class="hint-cost {% if unlocked %}paid{% endif %}">{% if unlocked %}usado{% else %}−{{ hint.cost }} XP{% endif %}</span>
             </div>
-            {% if unlocked %}
-            <div class="hint-body prose">{{ md(hint.body_md) }}</div>
-            {% else %}
-            <div class="hint-actions">
+            <div class="hint-body prose">{% if unlocked %}{{ md(hint.body_md) }}{% endif %}</div>
+            <div class="hint-actions" {% if unlocked %}hidden{% endif %}>
               <button class="btn btn-sm js-unlock-hint" data-slug="{{ challenge.slug }}" data-level="{{ hint.level }}">
                 {{ m.icon("unlock", 12) }} Desbloquear hint {{ hint.level }}
               </button>
             </div>
-            {% endif %}
           </div>
           {% endfor %}
         </div>
