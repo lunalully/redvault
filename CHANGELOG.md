@@ -2,6 +2,16 @@
 
 All notable changes to REDVAULT are documented here. The project follows a pragmatic version sequence; it is pre-1.0 and the content catalog is incomplete.
 
+## [1.8.1] — 2026-11-18
+
+### Fixed
+
+- **"Iniciar lab" falhava quando a plataforma roda dentro do `.venv`.** `lab_manager` resolvia o interpretador dos labs com `shutil.which("python3")`, que com o venv ativo aponta para `.venv/bin/python3`. Como o `bwrap` só liga `/usr`, `/bin`, `/lib`, `/lib64` e `/etc`, todo lançamento morria com `bwrap: execvp .../redvault/.venv/bin/python3: No such file or directory`. Agora os labs usam um interpretador de sistema (`/usr/bin/python3`) que consiga `import flask`; se só houver Flask dentro do venv, o prefixo do venv é montado dentro do sandbox. Novo override `REDVAULT_LAB_PYTHON`.
+
+### Tests
+
+- Regressão em `tests/test_lan_mode.py::test_lab_never_uses_the_platform_venv_outside_the_sandbox`.
+
 ## [1.8.0] — 2026-11-14
 
 Primeira versão pública do projeto.

@@ -114,3 +114,33 @@ def test_default_mode_keeps_the_range_on_loopback():
             lm.lab_manager._release_port(port)
     finally:
         lm.LAB_BIND = original
+
+
+def test_lab_never_uses_the_platform_venv_outside_the_sandbox(tmp_path):
+    """Regression: starting from an activated `.venv` broke "start lab".
+
+    `shutil.which("python3")` resolved to `.venv/bin/python3`, which bwrap
+    cannot see (only /usr, /bin, /lib, /lib64 and /etc are bound), so every lab
+    launch failed with
+    "bwrap: execvp /path/redvault/.venv/bin/python3: No such file or directory".
+    """
+    from app.lab_manager import lab_manager
+
+    # Simulate the activated-venv ordering of PATH that triggered the bug.
+    fake_venv = tmp_path / ".venv" / "bin"
+    fake_venv.mkdir(parents=True)
+    (fake_venv / "python3").symlink_to("/usr/bin/python3")
+    old_path = os.environ.get("PATH", "")
+    os.environ["PATH"] = f"{fake_venv}:{old_path}"
+    try:
+        python = lab_manager._lab_python()
+    finally:
+        os.environ["PATH"] = old_path
+
+    assert ".venv" not in python, python
+    assert os.path.isabs(python) and os.path.exists(python)
+
+    command = lab_manager._build_command(
+        tmp_path, tmp_path / "state", {"LAB_PORT": "0"}
+    )
+    assert str(fake_venv) not in " ".join(command)

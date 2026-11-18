@@ -19,6 +19,7 @@ import shutil
 import signal
 import socket
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -108,12 +109,92 @@ class LabManager:
     def _bwrap_available(self) -> bool:
         return bool(USE_BWRAP and shutil.which("bwrap"))
 
+    def _lab_python(self) -> str:
+        """Interpreter used to spawn labs.
+
+        Labs must not inherit the platform's virtualenv. When the platform is
+        started from an activated `.venv`, `shutil.which("python3")` resolves to
+        `.venv/bin/python3`, which lives *outside* the bwrap sandbox (only
+        /usr, /bin, /lib, /lib64 and /etc are bound). The sandbox then fails
+        with `bwrap: execvp .venv/bin/python3: No such file or directory`.
+
+        Instead, prefer a system interpreter. The labs only need the standard
+        library plus Flask, so a system python that can import Flask beats a
+        venv python that the sandbox cannot see. If no system candidate works,
+        fall back to the current interpreter (un-sandboxed `sys.executable`),
+        which may still be the venv one; `_venv_bindable()` covers that case.
+        """
+        candidates = [
+            os.environ.get("REDVAULT_LAB_PYTHON", ""),
+            "/usr/bin/python3",
+            "/usr/local/bin/python3",
+            "/bin/python3",
+        ]
+        for candidate in candidates:
+            if not candidate or not os.path.exists(candidate):
+                continue
+            if self._python_has_flask(candidate):
+                return candidate
+            resolved = os.path.realpath(candidate)
+            if resolved != candidate and os.path.exists(resolved) and self._python_has_flask(resolved):
+                # e.g. a broken/rebuilt `.venv` symlink pointing at a system
+                # interpreter that does have Flask installed.
+                return resolved
+        # Last resort: the interpreter running the platform. If it is a venv
+        # interpreter the sandbox binds it explicitly (see _build_command).
+        return sys.executable
+
+    @staticmethod
+    def _python_has_flask(python: str) -> bool:
+        try:
+            result = subprocess.run(
+                [python, "-c", "import flask"],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=10,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return False
+        return result.returncode == 0
+
+    def _venv_bindable(self, python: str) -> str | None:
+        """Return a venv prefix that must be bound into the sandbox, if any.
+
+        Only relevant when the chosen interpreter is NOT a system one (Flask
+        exists only inside `.venv`). The prefix has to be visible inside bwrap
+        for the venv's `site-packages` to be found.
+        """
+        system_prefixes = ("/usr/", "/bin/", "/sbin/")
+        if python.startswith(system_prefixes):
+            return None
+        try:
+            result = subprocess.run(
+                [python, "-c", "import sys; print(sys.prefix)"],
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        prefix = result.stdout.strip()
+        if not prefix or prefix in ("/usr", "/usr/local", "/"):
+            return None
+        return prefix
+
     def _build_command(self, lab_dir: Path, state_dir: Path, env: dict) -> list[str]:
-        python = shutil.which("python3") or "/usr/bin/python3"
+        python = self._lab_python()
         if not self._bwrap_available():
             inner = [python, str(lab_dir / "app.py")]
         else:
             binds = ["/usr", "/bin", "/lib", "/lib64", "/etc"]
+            venv_prefix = self._venv_bindable(python)
+            if venv_prefix and os.path.exists(venv_prefix):
+                # Bind the real venv prefix (resolving symlinks such as
+                # `.venv/bin/python3 -> /usr/bin/python3`) so a venv-only Flask
+                # installation keeps working under bwrap.
+                binds.append(venv_prefix)
             args = ["bwrap"]
             for path in binds:
                 if os.path.exists(path):

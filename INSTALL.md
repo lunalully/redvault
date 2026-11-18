@@ -60,6 +60,24 @@ Open **http://127.0.0.1:8000**. On first run:
 3. Challenge and machine manifests are seeded automatically.
 4. Use **Challenges → Start lab**, then open the shown `127.0.0.1:<port>` URL.
 
+### Labs and the virtualenv
+
+Labs are spawned with a **system** interpreter (`/usr/bin/python3` by default),
+not with `.venv/bin/python3`. This is intentional: when bubblewrap is active the
+lab runs inside a sandbox that only binds `/usr`, `/bin`, `/lib`, `/lib64` and
+`/etc`, so a venv path such as `.../redvault/.venv/bin/python3` does not exist
+inside it. Labs only need the standard library plus Flask.
+
+If you keep Flask installed only inside a virtualenv, or need labs on another
+interpreter, point REDVAULT at it explicitly:
+
+```bash
+REDVAULT_LAB_PYTHON=/path/to/python3 python3 run.py
+```
+
+The chosen interpreter must be able to `import flask`. When it lives outside
+the system paths, its prefix is bound into the sandbox automatically.
+
 Everything under `data/` is generated on first start and is ignored by Git. The
 repository never ships a database or a master secret, and neither should be
 committed to a remote.
