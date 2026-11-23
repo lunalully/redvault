@@ -306,9 +306,9 @@
             {
               "slug": "rev-m3-u1-kb-word",
               "kind": "theory",
-              "title": "Macros do Word",
+              "title": "Macros em documentos Office",
               "estimated_minutes": 45,
-              "kb_slug": "ht-reversing-word-macros",
+              "kb_slug": "ht-generic-methodologies-and-resources-phishing-methodology-phishing-documents",
               "equipment": "software"
             },
             {

@@ -211,9 +211,9 @@
             {
               "slug": "osi-m1-u2-kb-bucket",
               "kind": "theory",
-              "title": "Buckets",
+              "title": "Buckets e metadado de instância expostos",
               "estimated_minutes": 40,
-              "kb_slug": "ht-network-services-pentesting-pentesting-web-buckets",
+              "kb_slug": "ht-pentesting-web-ssrf-server-side-request-forgery-cloud-ssrf",
               "equipment": "software"
             },
             {

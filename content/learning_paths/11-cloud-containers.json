@@ -381,9 +381,9 @@
             {
               "slug": "clo-m3-u1-kb-buckets",
               "kind": "theory",
-              "title": "Buckets",
+              "title": "SSRF e buckets: o caminho até o metadado da instância",
               "estimated_minutes": 35,
-              "kb_slug": "ht-network-services-pentesting-pentesting-web-buckets",
+              "kb_slug": "ht-pentesting-web-ssrf-server-side-request-forgery-cloud-ssrf",
               "equipment": "software"
             },
             {
