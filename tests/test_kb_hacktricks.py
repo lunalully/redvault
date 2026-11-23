@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import atexit
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -192,6 +193,77 @@ def test_imports_content_and_skips_todo_section(imported, repo):
             # marked translated, not left as untranslated English.
             assert doc.language == "pt-BR"
             assert doc.translation_status == "translated"
+
+
+_PT_TOKENS = re.compile(
+    r"(?<![\w-])("
+    r"[a-zà-ÿ]+(?:ção|ções|mente|dade|agem|ável|ível|ória|ório|ância|ência|eiro|eiros)"
+    r"|que|não|para|com|uma|dos|das|pelo|pela|está|são|também|quando|onde|como|isso|"
+    r"este|esta|esse|essa|sobre|entre|através|após|durante|pode|podem|deve|devem|será|"
+    r"fazer|usar|usando|verificar|executar|obter"
+    r")(?![\w-])",
+    re.I,
+)
+_EN_TOKENS = re.compile(
+    r"(?<![\w-])(the|this|that|these|those|and|with|without|which|you|your|can|cannot|"
+    r"should|must|will|would|from|there|they|their|when|where|how|is|are|was|were|be|"
+    r"been|being|it|its|as|at|on|in|by|has|have|had|may|might|need|use|using|used|"
+    r"page|file|code)(?![\w-])",
+    re.I,
+)
+
+
+def _looks_english(body: str) -> bool:
+    """True when a page's prose is English, measured against both editions.
+
+    Three attempts were needed, each rejected by measuring on the two real
+    branches instead of trusting the pattern:
+
+    1. "no Portuguese function word" — English technical prose keeps a few
+       ``a``/``o``/``e`` one-letter tokens (code, list markers), so it never
+       reached zero: the English edition passed;
+    2. "more English than Portuguese function words" — pt-BR pages quote long
+       English output (exploit logs, HTTP dumps), so 13% of the pt-BR library
+       was flagged and the signal drowned;
+    3. heading-only comparison — pt-BR headings often carry unaccented words
+       ("Informacoes Básicas"), which an accented token list misses.
+
+    What works is density over the whole body: quoting is local, an English
+    *edition* is English everywhere. Measured offline: 0.2% of the pt-BR
+    library flagged (the 2 docs that are mostly quoted English), 91.7% of the
+    English edition flagged.
+    """
+    words = len(body.split())
+    if words < 40:
+        return False
+    pt_hits, en_hits = len(_PT_TOKENS.findall(body)), len(_EN_TOKENS.findall(body))
+    if pt_hits + en_hits < 20:
+        return False
+    return en_hits / words > 0.12 and en_hits > 2.5 * pt_hits
+
+
+def test_pt_branch_import_does_not_ship_english_prose(imported):
+    """Guards against importing the English edition by mistake.
+
+    ``git clone --branch pt`` is the whole point of the HackTricks import: the
+    pt-BR edition is what the library promises. If someone clones ``master``
+    (the default branch — easy to do by accident) the other assertions here
+    still pass: commit, attribution, paths, and even ``language`` (the source
+    row declares ``branch: pt`` by default, so detection labels English text
+    as pt-BR/translated). Only measuring the text catches it.
+    """
+    with SessionLocal() as db:
+        docs = db.query(KB_Document).filter(KB_Document.origin == "imported").all()
+        assert docs, "nada importado: o teste não teria o que medir"
+        offenders = [
+            doc.source_path
+            for doc in docs
+            if _looks_english(doc.body_md.split("alterações locais são marcadas abaixo.", 1)[-1])
+        ]
+    assert len(offenders) <= len(docs) * 0.05, (
+        f"biblioteca majoritariamente em inglês ({len(offenders)}/{len(docs)}); "
+        f"faça o clone com --branch pt: {offenders[:5]}"
+    )
 
 
 def test_attribution_and_nc_notice_are_prepended_and_banner_removed(tmp_path):
